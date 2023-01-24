@@ -36,7 +36,7 @@ let currentState = 0b0000000;
 const initialState = 0b000000;
 const finalState = 0b1111111;
 const graphNodes = {};
-
+const graphEdges = {};
 
 function getNodes() {
 	if (Object.keys(graphNodes).length === 0) {
@@ -44,6 +44,17 @@ function getNodes() {
 	}
 
 	return graphNodes;
+}
+
+function lookupNode(binState) {
+	return getNodes()[binState];
+}
+
+function getEdges() {
+	if (Object.keys(graphEdges).length === 0) {
+		enumerateLinks();
+	}
+	return graphEdges;
 }
 
 function deserializeBin(binState) {
@@ -113,6 +124,7 @@ function isAlive(objState) {
 
 function convertObjToStringSyntax(stateObj) {
 	const resultString = `${stateObj.cannibalsLeftString}${stateObj.missionariesLeftString}${stateObj.boatLeftString}|${stateObj.cannibalsRightString}${stateObj.missionariesRightString}${stateObj.boatRightString}`;
+	stateObj.stringForm = resultString;
 	return resultString;
 }
 
@@ -124,27 +136,103 @@ function printState(objForm) {
 function enumerateStates() {
 	const stateCount = Math.pow(2, 7);
 	console.log('Total states', stateCount);
-	console.log('Initial state', currentState);
 	let deadCount = 0;
 	let impossibleCount = 0;
 
 	for (let i = initialState; i <= finalState; i++) {
 		const objForm = deserializeBin(i);
-		graphNodes[i] = objForm;
-		if (!objForm.isAlive)
+		const decodedString = convertObjToStringSyntax(objForm);
+		graphNodes[decodedString] = objForm;
+	}
+	console.log('Total Unique States', Object.keys(graphNodes).length);
+	console.log('Initial state', currentState);
+	for (const uniqueState of Object.values(graphNodes)) {
+		if (!uniqueState.isAlive)
 			deadCount++;
-		if (!objForm.isPossible)
+		if (!uniqueState.isPossible)
 			impossibleCount++;
-		printState(objForm);
+		printState(uniqueState);
 	}
 
 	console.log('impossibleCount:', impossibleCount);
 	console.log('deadCount:', deadCount);
 }
 
+function leftToRightTransitions(objState) {
+	const moves = [];
+
+	if (!objState.boatOnLeft)
+		return moves;
+
+	for (let totalSent = 1; totalSent <= boatCapacity; totalSent++) {
+		for (let cannibalsSent = 0; cannibalsSent <= objState.cannibalsOnLeftCount && cannibalsSent <= totalSent; cannibalsSent++) {
+			const missionariesSent = totalSent - cannibalsSent;
+
+			if (missionariesSent <= objState.missionariesOnLeftCount && cannibalsSent <= objState.cannibalsOnLeftCount)
+				moves.push(` ${cannibalsSent}c${missionariesSent}m`);
+
+		}
+	}
+
+	return moves;
+}
+
+function rightToLeftTransitions(objState) {
+	const moves = [];
+
+	if (objState.boatOnLeft)
+		return moves;
+
+	for (let totalSent = 1; totalSent <= boatCapacity; totalSent++) {
+		for (let cannibalsSent = 0; cannibalsSent <= objState.cannibalsOnRightCount && cannibalsSent <= totalSent; cannibalsSent++) {
+			const missionariesSent = totalSent - cannibalsSent;
+
+			if (missionariesSent <= objState.missionariesOnRightCount)
+				moves.push(` ${cannibalsSent}c${missionariesSent}m`);
+
+		}
+	}
+
+	return moves;
+}
+
+function possibleTransitions(objState) {
+	const moves = [];
+
+	// first we need to find which side the boat is on, since all transitions will be to the opposite side.
+
+	// in a very simplistic sense, you can either send 1 person or 2 people or ... or 'boatCapacity' people to the other side
+	// in general the options are to send 0 to 'boatCapacity' of cannibals to the other side
+	// where the number of missionaries sent are "totalSent - cannibalsSent"
+
+	moves.push(...leftToRightTransitions(objState));
+	moves.push(...rightToLeftTransitions(objState));
+
+	objState.transitions = moves;
+
+	// need to evaluate each move from a node and see what the target nodes would be
+	objState.targets = moves;
+
+	return moves;
+}
+
+function enumerateLinks() {
+	// from each position there are only certain possible moves
+	// the boat must always transit to the other side
+	// therefore the least significant bit will always flip (the boat side)
+	// and at least one person and no more than 'boatCapacity' may transit with the boat
+
+	for (let nodeId of Object.keys(getNodes())) {
+		const node = lookupNode(nodeId);
+		const trans = possibleTransitions(node);
+		console.log(`${node.stringForm}   \thas moves:${trans}`);
+	}
+}
+
 
 function main() {
 	const nodes = getNodes();
+	const edges = getEdges();
 }
 
 
