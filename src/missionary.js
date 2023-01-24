@@ -46,8 +46,8 @@ function getNodes() {
 	return graphNodes;
 }
 
-function lookupNode(binState) {
-	return getNodes()[binState];
+function lookupNode(stringState) {
+	return getNodes()[stringState];
 }
 
 function getEdges() {
@@ -57,6 +57,36 @@ function getEdges() {
 	return graphEdges;
 }
 
+function cannibalsLeftString(objForm) {
+	return `${(objForm.cannibalsOnLeftCount > 0) ? objForm.cannibalsOnLeftCount + 'c' : ''}`;
+}
+
+function cannibalsRightString(objForm) {
+	return `${(objForm.cannibalsOnRightCount > 0) ? objForm.cannibalsOnRightCount + 'c' : ''}`;
+}
+
+function missionariesLeftString(objForm) {
+	return `${(objForm.missionariesOnLeftCount > 0) ? objForm.missionariesOnLeftCount + 'm' : ''}`;
+}
+
+function missionariesRightString(objForm) {
+	return `${(objForm.missionariesOnRightCount > 0) ? objForm.missionariesOnRightCount + 'm' : ''}`;
+}
+
+function boatLeftString(objForm) {
+	return `${objForm.boatOnLeft ? 'b' : ''}`;
+}
+
+function boatRightString(objForm) {
+	return `${objForm.boatOnLeft ? '' : 'b'}`;
+}
+
+function convertStringToBin(stringState) {
+	const objectForm = lookupNode(stringState);
+
+	return objectForm.binState;
+}
+
 function deserializeBin(binState) {
 	const objectForm = {};
 
@@ -64,9 +94,8 @@ function deserializeBin(binState) {
 
 	objectForm.boatOnLeft = binState % 2 === 0;
 
-	objectForm.boatLeftString = `${objectForm.boatOnLeft ? 'b' : ''}`;
-	objectForm.boatRightString = `${objectForm.boatOnLeft ? '' : 'b'}`;
-
+	objectForm.boatLeftString = boatLeftString(objectForm);
+	objectForm.boatRightString = boatRightString(objectForm);
 
 	objectForm.missionary0OnLeft = (binState >> 1) % 2 === 0;
 	objectForm.missionary1OnLeft = (binState >> 2) % 2 === 0;
@@ -76,9 +105,8 @@ function deserializeBin(binState) {
 	objectForm.missionariesOnLeftCount = objectForm.missionariesOnLeft.reduce((total, currentEntry) => total + (currentEntry ? 1 : 0), 0);
 	objectForm.missionariesOnRightCount = missionaryCount - objectForm.missionariesOnLeftCount;
 
-	objectForm.missionariesLeftString = `${(objectForm.missionariesOnLeftCount > 0) ? objectForm.missionariesOnLeftCount + 'm' : ''}`;
-	objectForm.missionariesRightString = `${(objectForm.missionariesOnRightCount > 0) ? objectForm.missionariesOnRightCount + 'm' : ''}`;
-
+	objectForm.missionariesLeftString = missionariesLeftString(objectForm);
+	objectForm.missionariesRightString = missionariesRightString(objectForm);
 
 	objectForm.cannibal0OnLeft = (binState >> 4) % 2 === 0;
 	objectForm.cannibal1OnLeft = (binState >> 5) % 2 === 0;
@@ -88,15 +116,25 @@ function deserializeBin(binState) {
 	objectForm.cannibalsOnLeftCount = objectForm.cannibalsOnLeft.reduce((total, currentEntry) => total + (currentEntry ? 1 : 0), 0);
 	objectForm.cannibalsOnRightCount = cannibalCount - objectForm.cannibalsOnLeftCount;
 
-	objectForm.cannibalsLeftString = `${(objectForm.cannibalsOnLeftCount > 0) ? objectForm.cannibalsOnLeftCount + 'c' : ''}`;
-	objectForm.cannibalsRightString = `${(objectForm.cannibalsOnRightCount > 0) ? objectForm.cannibalsOnRightCount + 'c' : ''}`;
+	objectForm.cannibalsLeftString = cannibalsLeftString(objectForm);
+	objectForm.cannibalsRightString = cannibalsRightString(objectForm);
 
-	objectForm.resultString = `${objectForm.cannibalsLeftString}${objectForm.missionariesLeftString}${objectForm.boatLeftString}|${objectForm.cannibalsRightString}${objectForm.missionariesRightString}${objectForm.boatRightString}`;
+	objectForm.stringForm = serialize(objectForm);
 
 	objectForm.isPossible = isPossible(objectForm);
 	objectForm.isAlive = isAlive(objectForm);
 
 	return objectForm;
+}
+
+function deserialize(stringState) {
+	const binState = convertStringToBin(stringState);
+	return deserializeBin(binState);
+}
+
+function serialize(objectForm) {
+	const stringForm = `${cannibalsLeftString(objectForm)}${missionariesLeftString(objectForm)}${boatLeftString(objectForm)}|${cannibalsRightString(objectForm)}${missionariesRightString(objectForm)}${boatRightString(objectForm)}`;
+	return stringForm;
 }
 
 function isPossible(objState) {
@@ -122,40 +160,34 @@ function isAlive(objState) {
 	return true;
 }
 
-function convertObjToStringSyntax(stateObj) {
-	const resultString = `${stateObj.cannibalsLeftString}${stateObj.missionariesLeftString}${stateObj.boatLeftString}|${stateObj.cannibalsRightString}${stateObj.missionariesRightString}${stateObj.boatRightString}`;
-	stateObj.stringForm = resultString;
-	return resultString;
-}
-
 function printState(objForm) {
-	console.log('binary state:', '\'' + objForm.binState.toString(2) + '\'', 'decoded state:', '\'' + convertObjToStringSyntax(objForm) + '\'', `${objForm.isPossible ? '' : 'not possible'}`,
+	console.log('binary state:', '\'' + objForm.binState.toString(2) + '\'', 'decoded state:', '\'' + serialize(objForm) + '\'', `${objForm.isPossible ? '' : 'not possible'}`,
 		`${objForm.isAlive ? '' : 'dead'}`);
 }
 
 function enumerateStates() {
 	const stateCount = Math.pow(2, 7);
-	console.log('Total states', stateCount);
+	// console.log('Total states', stateCount);
 	let deadCount = 0;
 	let impossibleCount = 0;
 
 	for (let i = initialState; i <= finalState; i++) {
 		const objForm = deserializeBin(i);
-		const decodedString = convertObjToStringSyntax(objForm);
+		const decodedString = serialize(objForm);
 		graphNodes[decodedString] = objForm;
 	}
 	console.log('Total Unique States', Object.keys(graphNodes).length);
-	console.log('Initial state', currentState);
 	for (const uniqueState of Object.values(graphNodes)) {
 		if (!uniqueState.isAlive)
 			deadCount++;
 		if (!uniqueState.isPossible)
 			impossibleCount++;
-		printState(uniqueState);
+		// printState(uniqueState);
 	}
 
 	console.log('impossibleCount:', impossibleCount);
 	console.log('deadCount:', deadCount);
+	console.log('Initial state', deserializeBin(currentState).stringForm);
 }
 
 function leftToRightTransitions(objState) {
@@ -168,9 +200,23 @@ function leftToRightTransitions(objState) {
 		for (let cannibalsSent = 0; cannibalsSent <= objState.cannibalsOnLeftCount && cannibalsSent <= totalSent; cannibalsSent++) {
 			const missionariesSent = totalSent - cannibalsSent;
 
-			if (missionariesSent <= objState.missionariesOnLeftCount && cannibalsSent <= objState.cannibalsOnLeftCount)
-				moves.push(` ${cannibalsSent}c${missionariesSent}m`);
+			if (missionariesSent <= objState.missionariesOnLeftCount) {
+				{
+					let resultantState = deserialize(objState.stringForm);
+					resultantState.cannibalsOnLeftCount -= cannibalsSent;
+					resultantState.cannibalsOnRightCount += cannibalsSent;
+					resultantState.missionariesOnLeftCount -= missionariesSent;
+					resultantState.missionariesOnRightCount += missionariesSent;
+					resultantState.boatOnLeft = !resultantState.boatOnLeft;
+					// this is a funky way of doing a deep copy
+					resultantState = deserialize(serialize(resultantState));
+					resultantState.stringForm = serialize(resultantState);
+					const lastIndex = objState.targets.push(resultantState);
 
+					// console.log(`modified ${objState.stringForm} by ${cannibalsSent}c${missionariesSent}m and got ${serialize(resultantState)}`);
+					moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].stringForm}`);
+				}
+			}
 		}
 	}
 
@@ -187,9 +233,21 @@ function rightToLeftTransitions(objState) {
 		for (let cannibalsSent = 0; cannibalsSent <= objState.cannibalsOnRightCount && cannibalsSent <= totalSent; cannibalsSent++) {
 			const missionariesSent = totalSent - cannibalsSent;
 
-			if (missionariesSent <= objState.missionariesOnRightCount)
-				moves.push(` ${cannibalsSent}c${missionariesSent}m`);
+			if (missionariesSent <= objState.missionariesOnRightCount) {
+				let resultantState = deserialize(objState.stringForm);
+				resultantState.cannibalsOnRightCount -= cannibalsSent;
+				resultantState.cannibalsOnLeftCount += cannibalsSent;
+				resultantState.missionariesOnRightCount -= missionariesSent;
+				resultantState.missionariesOnLeftCount += missionariesSent;
+				resultantState.boatOnLeft = !resultantState.boatOnLeft;
+				// this is a funky way of doing a deep copy
+				resultantState = deserialize(serialize(resultantState));
+				resultantState.stringForm = serialize(resultantState);
+				const lastIndex = objState.targets.push(resultantState);
 
+				// console.log(`modified ${objState.stringForm} by ${cannibalsSent}c${missionariesSent}m and got ${serialize(resultantState)}`);
+				moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].stringForm}`);
+			}
 		}
 	}
 
@@ -205,13 +263,14 @@ function possibleTransitions(objState) {
 	// in general the options are to send 0 to 'boatCapacity' of cannibals to the other side
 	// where the number of missionaries sent are "totalSent - cannibalsSent"
 
+	objState.targets = [];
+
 	moves.push(...leftToRightTransitions(objState));
 	moves.push(...rightToLeftTransitions(objState));
 
 	objState.transitions = moves;
 
 	// need to evaluate each move from a node and see what the target nodes would be
-	objState.targets = moves;
 
 	return moves;
 }
@@ -225,7 +284,7 @@ function enumerateLinks() {
 	for (let nodeId of Object.keys(getNodes())) {
 		const node = lookupNode(nodeId);
 		const trans = possibleTransitions(node);
-		console.log(`${node.stringForm}   \thas moves:${trans}`);
+		console.log(`${node.stringForm}   \t${trans.length === 0 ? 'impossible' : (trans.length === 1 ? 'useless ' : '') + `moves${trans}`}`);
 	}
 }
 
