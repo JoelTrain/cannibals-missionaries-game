@@ -32,7 +32,6 @@ const boatCapacity = 2;
 // let boatOnLeft = true;
 const stateBits = cannibalCount + missionaryCount + 1; // one for the boat
 
-let currentState = 0b0000000;
 const initialState = 0b000000;
 const finalState = 0b1111111;
 const graphNodes = {};
@@ -187,7 +186,7 @@ function enumerateStates() {
 
 	console.log('impossibleCount:', impossibleCount);
 	console.log('deadCount:', deadCount);
-	console.log('Initial state', deserializeBin(currentState).stringForm);
+	console.log('Initial state', deserializeBin(0).stringForm);
 }
 
 function leftToRightTransitions(objState) {
@@ -288,10 +287,39 @@ function enumerateLinks() {
 	}
 }
 
+function printList(nodeArray) {
+	let resultString = '';
+	for (const node of nodeArray) {
+		resultString += node.stringForm + ' -> '
+	}
+	console.log(resultString);
+	return resultString;
+}
+
+function initializeColors(nodes) {
+	for (const node of nodes) {
+		node.color = 'white';
+	}
+}
+
+function breadthFirstSearch(nodes, start, end) {
+	initializeColors(nodes);
+
+	const discoverQueue = [];
+
+
+}
+
 
 function main() {
 	const nodes = getNodes();
 	const edges = getEdges();
+
+	const start = deserializeBin(initialState);
+	const end = deserializeBin(finalState);
+
+	const shortestPath = breadthFirstSearch(nodes, start, end);
+	printList(shortestPath);
 }
 
 
