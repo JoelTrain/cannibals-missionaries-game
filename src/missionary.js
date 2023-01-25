@@ -118,6 +118,8 @@ function deserializeBin(binState) {
 	objectForm.cannibalsLeftString = cannibalsLeftString(objectForm);
 	objectForm.cannibalsRightString = cannibalsRightString(objectForm);
 
+	objectForm.targets = [];
+
 	objectForm.stringForm = serialize(objectForm);
 
 	objectForm.isPossible = isPossible(objectForm);
@@ -174,6 +176,7 @@ function enumerateStates() {
 		const objForm = deserializeBin(i);
 		const decodedString = serialize(objForm);
 		graphNodes[decodedString] = objForm;
+
 	}
 	console.log('Total Unique States', Object.keys(graphNodes).length);
 	for (const uniqueState of Object.values(graphNodes)) {
@@ -208,8 +211,7 @@ function leftToRightTransitions(objState) {
 					resultantState.missionariesOnRightCount += missionariesSent;
 					resultantState.boatOnLeft = !resultantState.boatOnLeft;
 					// this is a funky way of doing a deep copy
-					resultantState = deserialize(serialize(resultantState));
-					resultantState.stringForm = serialize(resultantState);
+					resultantState = lookupNode(serialize(resultantState));
 					const lastIndex = objState.targets.push(resultantState);
 
 					// console.log(`modified ${objState.stringForm} by ${cannibalsSent}c${missionariesSent}m and got ${serialize(resultantState)}`);
@@ -240,9 +242,8 @@ function rightToLeftTransitions(objState) {
 				resultantState.missionariesOnLeftCount += missionariesSent;
 				resultantState.boatOnLeft = !resultantState.boatOnLeft;
 				// this is a funky way of doing a deep copy
-				resultantState = deserialize(serialize(resultantState));
-				resultantState.stringForm = serialize(resultantState);
-				const lastIndex = objState.targets.push(resultantState);
+        resultantState = lookupNode(serialize(resultantState));
+        const lastIndex = objState.targets.push(resultantState);
 
 				// console.log(`modified ${objState.stringForm} by ${cannibalsSent}c${missionariesSent}m and got ${serialize(resultantState)}`);
 				moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].stringForm}`);
@@ -261,8 +262,6 @@ function possibleTransitions(objState) {
 	// in a very simplistic sense, you can either send 1 person or 2 people or ... or 'boatCapacity' people to the other side
 	// in general the options are to send 0 to 'boatCapacity' of cannibals to the other side
 	// where the number of missionaries sent are "totalSent - cannibalsSent"
-
-	objState.targets = [];
 
 	moves.push(...leftToRightTransitions(objState));
 	moves.push(...rightToLeftTransitions(objState));
@@ -297,31 +296,77 @@ function printList(nodeArray) {
 }
 
 function initializeColors(nodes) {
-	for (const node of nodes) {
-		node.color = 'white';
+	for (const node of Object.values(nodes)) {
+		node.color = 'unseen'; // white
+    node.shortestMovePathToMe = [];
+    node.shortestStatePathToMe = [];
+    // console.log(node.stringForm, 'marked unseen');
+    if(node.stringForm === deserializeBin(finalState).stringForm)
+      console.log(node.stringForm, node.shortestStatePathToMe);
 	}
+
+  console.log('all nodes marked unseen');
+}
+
+function discoverNode(node, queue) {
+  if(node.isAlive)
+    queue.push(node);
+  node.color = 'seen';
+  console.log(node.stringForm, 'has been seen for the first time');
+}
+
+function visitNode(node) {
+  node.color = 'complete';
+  console.log(node.stringForm, 'has been completed. All neighbors have been examined.')
+}
+
+function examineNeighbors(node, queue) {
+  for(const neighbor of node.targets) {
+    if(neighbor.color === 'unseen') {
+      neighbor.shortestStatePathToMe = [...node.shortestStatePathToMe, neighbor];
+      discoverNode(neighbor, queue);
+      printList(neighbor.shortestStatePathToMe);
+    }
+  }
 }
 
 function breadthFirstSearch(nodes, start, end) {
 	initializeColors(nodes);
 
+  // a queue, use push to add to the end
+  // and use shift to pop off the front
 	const discoverQueue = [];
 
+  start.shortestStatePathToMe = [start];
+  discoverNode(start, discoverQueue);
 
+  while (discoverQueue.length !== 0) {
+    const currentNode = discoverQueue.shift();
+    examineNeighbors(currentNode, discoverQueue);
+    visitNode(currentNode);
+
+    if (currentNode.stringForm === end.stringForm) {
+
+      break;
+    }
+  }
+
+  return end.shortestStatePathToMe;
 }
-
 
 function main() {
 	const nodes = getNodes();
 	const edges = getEdges();
 
-	const start = deserializeBin(initialState);
-	const end = deserializeBin(finalState);
+	const start = lookupNode(deserializeBin(initialState).stringForm);
+	const end = lookupNode(deserializeBin(finalState).stringForm);
 
 	const shortestPath = breadthFirstSearch(nodes, start, end);
+
+  console.log('####### this is the shortest path to the end! ########');
+
+  console.log(shortestPath);
 	printList(shortestPath);
 }
-
-
 
 main();
