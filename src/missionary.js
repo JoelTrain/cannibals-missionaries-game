@@ -211,11 +211,11 @@ function leftToRightTransitions(objState) {
 					resultantState.missionariesOnRightCount += missionariesSent;
 					resultantState.boatOnLeft = !resultantState.boatOnLeft;
 					// this is a funky way of doing a deep copy
-					resultantState = lookupNode(serialize(resultantState));
-					const lastIndex = objState.targets.push(resultantState);
+					resultantState = lookupNode(serialize(resultantState));        
+          const lastIndex = objState.targets.push({targetNode: resultantState, move: `${cannibalsSent},${missionariesSent}`});
 
 					// console.log(`modified ${objState.stringForm} by ${cannibalsSent}c${missionariesSent}m and got ${serialize(resultantState)}`);
-					moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].stringForm}`);
+					moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].targetNode.stringForm}`);
 				}
 			}
 		}
@@ -243,10 +243,10 @@ function rightToLeftTransitions(objState) {
 				resultantState.boatOnLeft = !resultantState.boatOnLeft;
 				// this is a funky way of doing a deep copy
         resultantState = lookupNode(serialize(resultantState));
-        const lastIndex = objState.targets.push(resultantState);
+        const lastIndex = objState.targets.push({targetNode: resultantState, move: `${cannibalsSent},${missionariesSent}`});
 
 				// console.log(`modified ${objState.stringForm} by ${cannibalsSent}c${missionariesSent}m and got ${serialize(resultantState)}`);
-				moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].stringForm}`);
+				moves.push(` ${cannibalsSent}c${missionariesSent}m -> ${objState.targets[lastIndex - 1].targetNode.stringForm}`);
 			}
 		}
 	}
@@ -282,14 +282,14 @@ function enumerateLinks() {
 	for (let nodeId of Object.keys(getNodes())) {
 		const node = lookupNode(nodeId);
 		const trans = possibleTransitions(node);
-		console.log(`${node.stringForm}   \t${trans.length === 0 ? 'impossible' : (trans.length === 1 ? 'useless ' : '') + `moves${trans}`}`);
+		// console.log(`${node.stringForm}   \t${trans.length === 0 ? 'impossible' : (trans.length === 1 ? 'useless ' : '') + `moves${trans}`}`);
 	}
 }
 
 function printList(nodeArray) {
 	let resultString = '';
 	for (const node of nodeArray) {
-		resultString += node.stringForm + ' -> '
+		resultString += node.stringForm + '  '
 	}
 	console.log(resultString);
 	return resultString;
@@ -301,31 +301,32 @@ function initializeColors(nodes) {
     node.shortestMovePathToMe = [];
     node.shortestStatePathToMe = [];
     // console.log(node.stringForm, 'marked unseen');
-    if(node.stringForm === deserializeBin(finalState).stringForm)
-      console.log(node.stringForm, node.shortestStatePathToMe);
+    // if(node.stringForm === deserializeBin(finalState).stringForm)
+    //   console.log(node.stringForm, node.shortestStatePathToMe);
 	}
 
-  console.log('all nodes marked unseen');
+  // console.log('all nodes marked unseen');
 }
 
 function discoverNode(node, queue) {
   if(node.isAlive)
     queue.push(node);
   node.color = 'seen';
-  console.log(node.stringForm, 'has been seen for the first time');
+  // console.log(node.stringForm, 'has been seen for the first time');
 }
 
 function visitNode(node) {
   node.color = 'complete';
-  console.log(node.stringForm, 'has been completed. All neighbors have been examined.')
+  // console.log(node.stringForm, 'has been completed. All neighbors have been examined.')
 }
 
 function examineNeighbors(node, queue) {
-  for(const neighbor of node.targets) {
-    if(neighbor.color === 'unseen') {
-      neighbor.shortestStatePathToMe = [...node.shortestStatePathToMe, neighbor];
-      discoverNode(neighbor, queue);
-      printList(neighbor.shortestStatePathToMe);
+  for(const { targetNode, move } of node.targets) {
+    if(targetNode.color === 'unseen') {
+      targetNode.shortestStatePathToMe = [...node.shortestStatePathToMe, targetNode];
+      targetNode.shortestMovePathToMe = [...node.shortestMovePathToMe, move];
+      discoverNode(targetNode, queue);
+      // printList(targetNode.shortestStatePathToMe);
     }
   }
 }
@@ -365,7 +366,8 @@ function main() {
 
   console.log('####### this is the shortest path to the end! ########');
 
-  console.log(shortestPath);
+  // console.log(shortestPath);
+  console.log(end.shortestMovePathToMe);
 	printList(shortestPath);
 }
 
