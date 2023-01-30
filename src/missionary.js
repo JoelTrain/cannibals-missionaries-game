@@ -26,8 +26,8 @@
 // For the base scenario of 3c and 3m + 1b each state can be represented by 7 bits.
 // Therefore there are 128 states.
 
-const cannibalCount = 15;
-const missionaryCount = 19;
+const cannibalCount = 5;
+const missionaryCount = 7;
 const boatCapacity = 2;
 // let boatOnLeft = true;
 // const stateBits = cannibalCount + missionaryCount + 1; // one for the boat
@@ -83,12 +83,12 @@ function deserialize(stringState) {
 
   const leftSideString = stringState.slice(0, riverIndex);
 
+  const cIndex = leftSideString.indexOf('c');
   {
     let canLeftCount = 0;
 
-    const cIndex = leftSideString.indexOf('c');
     if(cIndex > 0)
-      canLeftCount = parseInt(leftSideString.charAt(cIndex - 1))
+      canLeftCount = parseInt(leftSideString.slice(0, cIndex));
 
     objectForm._cannibalsOnLeftCount = canLeftCount;
     objectForm.cannibalsOnLeftCount = () => objectForm._cannibalsOnLeftCount;
@@ -101,7 +101,7 @@ function deserialize(stringState) {
 
     const mIndex = leftSideString.indexOf('m');
     if(mIndex > 0)
-      missLeftCount = parseInt(leftSideString.charAt(mIndex - 1))
+      missLeftCount = parseInt(leftSideString.slice(cIndex + 1, mIndex));
 
     objectForm._missionariesOnLeftCount = missLeftCount;
     objectForm.missionariesOnLeftCount = () => objectForm._missionariesOnLeftCount;
@@ -380,8 +380,12 @@ function main() {
 
 	const shortestPath = breadthFirstSearch(nodes, start, end);
 
-  console.log('####### this is the shortest path to the end! ########');
-  console.log(end.shortestMovePathToMe.length);
+  if(end.shortestMovePathToMe.length === 0) {
+    console.log("No solution.");
+    return;
+  }
+
+  console.log(`The shortest path to the end is ${end.shortestMovePathToMe.length} moves.`);
   // console.log(shortestPath);
   console.log(end.shortestMovePathToMe);
 	printList(shortestPath);
